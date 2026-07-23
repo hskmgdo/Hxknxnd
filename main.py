@@ -19,7 +19,7 @@ import base64
 import uuid
 
 # ========== تنظیمات اصلی ==========
-BOT_TOKEN = "8810741889:AAEe7Q1eCuBuSRWNfDxGhJrXDijrO0PX6t4"
+BOT_TOKEN = "8423981755:AAH3nIKjuDncbPPO_67K8OSRd9M9TREJLtc"
 ADMIN_IDS = [8916314219]
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
