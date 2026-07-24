@@ -13,7 +13,7 @@ import hashlib
 from datetime import datetime
 
 # ========== تنظیمات اصلی ==========
-BOT_TOKEN = "8698104560:AAFh7uTmqpDsH0WPPKBE-z1wvW6443zuOcI"
+BOT_TOKEN = "8423981755:AAFaEYzOefEaxDiuyvKKyyTJzlhDXWSqyRw"
 ADMIN_ID = 8680457924  # آیدی عددی شما
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
