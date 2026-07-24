@@ -1,320 +1,254 @@
 import telebot
-from telebot.types import (
-    InlineKeyboardMarkup, InlineKeyboardButton,
-    Message, CallbackQuery
-)
+from telebot.types import Message
 import time
 import json
-import sqlite3
-import logging
-import os
 import random
-import hashlib
+import re
 from datetime import datetime
+import logging
 
-# ========== تنظیمات اصلی ==========
+# ========== توکن ربات ==========
 BOT_TOKEN = "8423981755:AAFaEYzOefEaxDiuyvKKyyTJzlhDXWSqyRw"
-ADMIN_ID = 8680457924  # آیدی عددی شما
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-# ========== تنظیمات لاگینگ ==========
+# ========== لاگینگ ==========
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler('vpn_bot.log'), logging.StreamHandler()]
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# ========== کانفیگ‌های WhiteDNS ==========
-WHITEDNS_CONFIGS = [
-    """stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hcmFza2hhdGFyZS5nZ2ZmLm5ldCIsImVuY3J5cHRpb25fa2V5IjoiZWQwY2VmMTZiNzE1M2I4ZDgzNWEzMjc4NjE1OTdjNjQiLCJlbmNyeXB0aW9uX21ldGhvZCI6MX19fX0""",
+# ========== اطلاعات ادمین ==========
+ADMIN_NAME = "Reza Grootz"
+ADMIN_USERNAME = "@Grootz_Support"
+ADMIN_ID = 8680457924
+
+# ========== دیتابیس هوشمند پاسخ‌ها ==========
+class SmartReplies:
+    def __init__(self):
+        self.responses = {
+            # احوالپرسی
+            "سلام": [
+                "سلام عزیزم! 😍 چطور می‌تونم امروز بهت کمک کنم؟",
+                "سلام رضا جان! 🌟 خوش اومدی، چه کاری برات انجام بدم؟",
+                "سلام بر بهترین! 🚀 آماده‌ام تا بهت خدمت کنم",
+                "سلام گلم! ❤️ چطوره اوضاع؟",
+                "سلام داداش! 🔥 بیا ببینم چیکار می‌تونم برات بکنم"
+            ],
+            "خوبی": [
+                "ممنون که پرسیدی عزیزم! ❤️ من که با دیدن تو عالی شدم! تو چطوری؟",
+                "فوق‌العاده‌م داداش! 🌟 حالا که تو اینجایی بهترم شد!",
+                "بهترینم! 😎 راستی تو چطوری؟ دلم برات تنگ شده بود",
+                "خوبم ممنون رضا جان! 🚀 حالا که پیام دادی عالی تر شدم!"
+            ],
+            "چطوری": [
+                "من که با دیدن تو فوق‌العاده‌م! 😍 تو چطوری رضا جان؟",
+                "بهترین حالت ممکن! 🌟 حالا که تو هستی دیگه عالی تر از این نمیشه",
+                "خوبم ممنون عزیزم! ❤️ راستی خبر خاصی داری؟",
+                "فوق‌العاده‌م! 🚀 حاضرم هر کاری برات بکنم"
+            ],
+            "ممنون": [
+                "خواهش می‌کنم عزیزم! ❤️ همیشه در خدمت شما هستم",
+                "قربانت داداش! 🌟 هر وقت نیاز بود در خدمتم",
+                "چشمت روشاد! 😎 خوشحالم که تونستم کمکت کنم",
+                "افتخار من بود رضا جان! 🚀 هر کاری ازم بربیاد انجام می‌دم"
+            ],
+            "خدافظ": [
+                "خدافظ عزیزم! ❤️ منتظرت هستم، هر وقت نیاز بود بیا",
+                "به امید دیدار دوباره! 🌟 مواظب خودت باش رضا جان",
+                "خدافظ گلم! 🚀 همیشه برات بهترین‌ها رو آرزو می‌کنم",
+                "قربونت برم! ❤️ زود برگرد دلم برات تنگ میشه"
+            ],
+            
+            # خدمات و کانفیگ
+            "کانفیگ": [
+                "🌐 **کانفیگ‌های WhiteDNS آماده‌ست!**\n\n"
+                "۱. `stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hcmFza2hhdGFyZS5nZ2ZmLm5ldCIsImVuY3J5cHRpb25fa2V5IjoiZWQwY2VmMTZiNzE1M2I4ZDgzNWEzMjc4NjE1OTdjNjQiLCJlbmNyeXB0aW9uX21ldGhvZCI6MX19fX0`\n\n"
+                "۲. `stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hbm9ueW1vdXMub2JzZXJ2ZXIiLCJlbmNyeXB0aW9uX2tleSI6ImIyNzUwMzkxOTliMWM4YzkiLCJlbmNyeXB0aW9uX21ldGhvZCI6M319fX0`\n\n"
+                "📌 این کانفیگ‌ها کاملاً رایگان و بدون محدودیت هستن!",
+                
+                "🔥 **کانفیگ‌های سفارشی مخصوص تو!**\n\n"
+                "همین الان ۲ تا کانفیگ رایگان WhiteDNS برات می‌فرستم:\n"
+                "۱. `stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hcmFza2hhdGFyZS5nZ2ZmLm5ldCIsImVuY3J5cHRpb25fa2V5IjoiZWQwY2VmMTZiNzE1M2I4ZDgzNWEzMjc4NjE1OTdjNjQiLCJlbmNyeXB0aW9uX21ldGhvZCI6MX19fX0`\n\n"
+                "۲. `stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hbm9ueW1vdXMub2JzZXJ2ZXIiLCJlbmNyeXB0aW9uX2tleSI6ImIyNzUwMzkxOTliMWM4YzkiLCJlbmNyeXB0aW9uX21ldGhvZCI6M319fX0`"
+            ],
+            
+            "سرور اختصاصی": [
+                "🪄 **سرور اختصاصی GROOTZ**\n\n"
+                "برای دریافت سرور اختصاصی با سرعت بالا و پشتیبانی ۲۴/۷، همین الان با من تماس بگیر:\n"
+                f"👤 {ADMIN_NAME}\n"
+                f"📱 {ADMIN_USERNAME}",
+                
+                "🔥 **سرور اختصاصی فوق‌العاده!**\n\n"
+                "💎 سرعت بالا\n"
+                "🔒 امنیت کامل\n"
+                "🛡️ پشتیبانی ویژه\n"
+                "📞 برای اطلاعات بیشتر با من تماس بگیر:\n"
+                f"{ADMIN_USERNAME}"
+            ],
+            
+            "قیمت": [
+                "💰 **تعرفه‌های ویژه GROOTZ**\n\n"
+                "🔹 کانفیگ رایگان WhiteDNS: رایگان ♾️\n"
+                "🔹 سرور اختصاصی پایه: تماس بگیرید\n"
+                "🔹 سرور اختصاصی حرفه‌ای: تماس بگیرید\n"
+                "🔹 سرور اختصاصی بیزینس: تماس بگیرید\n\n"
+                f"📞 برای مشاوره: {ADMIN_USERNAME}",
+                
+                "💎 **پکیج‌های ویژه**\n\n"
+                "🔸 ماهیانه با تخفیف ویژه\n"
+                "🔸 ۳ ماهه با هدیه کانفیگ رایگان\n"
+                "🔸 ۶ ماهه با ۲۰٪ تخفیف\n"
+                "🔸 ۱۲ ماهه با ۳۰٪ تخفیف + پشتیبانی VIP\n\n"
+                f"📞 {ADMIN_USERNAME}"
+            ],
+            
+            "پشتیبانی": [
+                f"🛡️ **پشتیبانی ۲۴/۷ GROOTZ**\n\n"
+                "ما همیشه در کنار شما هستیم!\n"
+                "⏰ پاسخگویی: کمتر از ۵ دقیقه\n"
+                "📞 تماس با پشتیبانی:\n"
+                f"{ADMIN_USERNAME}",
+                
+                "🎯 **تیم پشتیبانی حرفه‌ای**\n\n"
+                "✅ رفع سریع مشکلات\n"
+                "✅ مشاوره رایگان\n"
+                "✅ آموزش نصب و راه‌اندازی\n\n"
+                f"📞 {ADMIN_USERNAME}"
+            ]
+        }
+        
+        # کلمات کلیدی برای تشخیص خودکار
+        self.keywords = {
+            "سلام": ["سلام", "درود", "هی", "hey", "hi", "hello"],
+            "خوبی": ["خوبی", "چطوری", "چطورین", "حالت", "احوالت"],
+            "ممنون": ["ممنون", "مرسی", "متشکرم", "thanks", "thank"],
+            "خدافظ": ["خدافظ", "خدا حافظ", "بای", "bye", "goodbye"],
+            "کانفیگ": ["کانفیگ", "config", "وایت", "whitedns", "رایگان"],
+            "سرور اختصاصی": ["سرور", "اختصاصی", "special", "dedicated", "vip"],
+            "قیمت": ["قیمت", "هزینه", "پول", "چند", "قیمتش"],
+            "پشتیبانی": ["پشتیبانی", "support", "کمک", "راهنما"]
+        }
     
-    """stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hbm9ueW1vdXMub2JzZXJ2ZXIiLCJlbmNyeXB0aW9uX2tleSI6ImIyNzUwMzkxOTliMWM4YzkiLCJlbmNyeXB0aW9uX21ldGhvZCI6M319fX0"""
-]
+    def get_response(self, text):
+        """دریافت پاسخ مناسب برای پیام کاربر"""
+        text_lower = text.lower()
+        
+        # بررسی کلمات کلیدی
+        for category, words in self.keywords.items():
+            for word in words:
+                if word in text_lower:
+                    response_list = self.responses.get(category, [])
+                    if response_list:
+                        return random.choice(response_list)
+        
+        # پاسخ‌های عمومی برای موارد دیگر
+        general_responses = [
+            "😎 **رضا جان!** سوالت رو کامل‌تر بپرس تا بهترین پاسخ رو بدم!\n\n"
+            f"📞 برای مشاوره فوری: {ADMIN_USERNAME}",
+            
+            "🔥 **عالی!** سوال خوبی پرسیدی!\n\n"
+            "💡 می‌تونی درباره این موضوعات بپرسی:\n"
+            "• کانفیگ رایگان WhiteDNS\n"
+            "• سرور اختصاصی\n"
+            "• قیمت و تعرفه‌ها\n"
+            "• پشتیبانی",
+            
+            "🌟 **رضا GROOTZ** همیشه آماده کمک به شماست!\n\n"
+            "چیزی که نیاز داری رو بگو تا بهترین راهکار رو بهت بدم.",
+            
+            f"💎 **سوال عالی!**\n\n"
+            f"برای دریافت پاسخ دقیق‌تر، می‌تونی به {ADMIN_USERNAME} پیام بدی.",
+            
+            "🚀 **خوشحالم که سوال می‌پرسی!**\n\n"
+            "هر چیزی که نیاز داری رو بگو، من بهترین پاسخ رو می‌دم."
+        ]
+        
+        return random.choice(general_responses)
 
-# ========== دیتابیس ساده ==========
-class Database:
-    def __init__(self, db_file='users.db'):
-        self.conn = sqlite3.connect(db_file, check_same_thread=False)
-        self.cursor = self.conn.cursor()
-        self._create_tables()
+# ========== ایجاد نمونه ==========
+smart_replies = SmartReplies()
+
+# ========== هندلر پیام‌ها ==========
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message: Message):
+    """هندلر هوشمند همه پیام‌ها"""
+    user = message.from_user
+    text = message.text or ""
     
-    def _create_tables(self):
-        self.cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                join_date INTEGER,
-                last_seen INTEGER
-            )
-        ''')
-        self.conn.commit()
+    # لاگ کردن
+    logger.info(f"پیام از {user.first_name} (@{user.username}): {text[:50]}")
     
-    def execute(self, query, params=()):
-        self.cursor.execute(query, params)
-        self.conn.commit()
-        return self.cursor
+    # دریافت پاسخ هوشمند
+    response = smart_replies.get_response(text)
     
-    def fetch_one(self, query, params=()):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchone()
-    
-    def fetch_all(self, query, params=()):
-        self.cursor.execute(query, params)
-        return self.cursor.fetchall()
-    
-    def close(self):
-        self.conn.close()
+    # ارسال پاسخ
+    try:
+        bot.reply_to(message, response, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"خطا در ارسال پاسخ: {e}")
+        bot.reply_to(message, f"❌ یه مشکلی پیش اومد! لطفاً دوباره تلاش کن یا به {ADMIN_USERNAME} پیام بده.")
 
-db = Database()
-
-# ========== توابع کمکی ==========
-def create_user(user_id, username=None, first_name=None):
-    """ثبت کاربر جدید در دیتابیس"""
-    now = int(time.time())
-    db.execute("""
-        INSERT OR IGNORE INTO users (user_id, username, first_name, join_date, last_seen)
-        VALUES (?, ?, ?, ?, ?)
-    """, (user_id, username, first_name, now, now))
-    
-    # به‌روزرسانی last_seen
-    db.execute("UPDATE users SET last_seen = ? WHERE user_id = ?", (now, user_id))
-
-def get_user(user_id):
-    """دریافت اطلاعات کاربر"""
-    row = db.fetch_one("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    if row:
-        return dict(row)
-    return None
-
-def format_time(timestamp):
-    if timestamp:
-        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
-    return "نامحدود"
-
-def format_bytes(bytes_val):
-    if bytes_val < 1024:
-        return f"{bytes_val} B"
-    elif bytes_val < 1048576:
-        return f"{bytes_val / 1024:.1f} KB"
-    elif bytes_val < 1073741824:
-        return f"{bytes_val / 1048576:.1f} MB"
-    elif bytes_val < 1099511627776:
-        return f"{bytes_val / 1073741824:.1f} GB"
-    else:
-        return f"{bytes_val / 1099511627776:.1f} TB"
-
-# ========== کیبوردها ==========
-def main_menu():
-    """منوی اصلی ربات"""
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("🌐 دریافت کانفیگ WhiteDNS", callback_data="get_whitedns"),
-        InlineKeyboardButton("🪄 دریافت سرور اختصاصی GROOTZ", url="https://t.me/Grootz_Support"),
-        InlineKeyboardButton("ℹ️ راهنما", callback_data="help"),
-        InlineKeyboardButton("📊 وضعیت من", callback_data="my_status")
-    )
-    return keyboard
-
-def get_back_button():
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton("🔙 بازگشت", callback_data="back_main"))
-    return keyboard
-
-# ========== دستورات اصلی ==========
+# ========== دستورات ==========
 @bot.message_handler(commands=['start'])
 def start_command(message):
     user = message.from_user
-    user_id = user.id
-    
-    # ثبت کاربر
-    create_user(user_id, user.username, user.first_name)
-    
     text = f"""
-🚀 **ربات VPN WhiteDNS** 🚀
+🚀 **به ربات حرفه‌ای {ADMIN_NAME} خوش اومدی!** 🚀
 ━━━━━━━━━━━━━━━━━━━━━━
 👤 **کاربر:** {user.first_name}
-🆔 **آیدی:** `{user_id}`
+🆔 **آیدی:** `{user.id}`
 ━━━━━━━━━━━━━━━━━━━━━━
 
-✨ **به ربات خوش آمدید!**
+🔥 **من اینجام تا بهترین خدمات رو بهت بدم!**
 
-🔹 با کلیک روی دکمه زیر می‌توانید کانفیگ‌های WhiteDNS را دریافت کنید.
-🔹 این کانفیگ‌ها کاملاً رایگان و بدون محدودیت هستند.
+💡 **چی کار می‌تونم برات بکنم؟**
+• 🌐 کانفیگ رایگان WhiteDNS
+• 🪄 سرور اختصاصی VIP
+• 💰 مشاوره قیمت
+• 🛡️ پشتیبانی ۲۴/۷
 
-📌 **نکته:** برای دریافت سرور اختصاصی، از دکمه مخصوص استفاده کنید.
+📌 **فقط کافیه هر چیزی که نیاز داری بپرسی!**
+
+{ADMIN_USERNAME} - منتظرت هستم ❤️
 """
-    bot.reply_to(message, text, reply_markup=main_menu(), parse_mode='HTML')
+    bot.reply_to(message, text, parse_mode='HTML')
 
 @bot.message_handler(commands=['help'])
 def help_command(message):
-    text = """
-📚 **راهنمای ربات WhiteDNS**
-━━━━━━━━━━━━━━━━━━━━━━
-
-**دستورات اصلی:**
-/start - شروع و منوی اصلی
-/help - این راهنما
-
-**نحوه استفاده:**
-1. روی دکمه "دریافت کانفیگ WhiteDNS" کلیک کنید
-2. دو کانفیگ برای شما ارسال می‌شود
-3. کانفیگ را در اپلیکیشن مورد نظر وارد کنید
-
-**پشتیبانی:**
-برای دریافت سرور اختصاصی یا سوالات بیشتر، از دکمه "دریافت سرور اختصاصی GROOTZ" استفاده کنید.
-"""
-    bot.reply_to(message, text, reply_markup=get_back_button(), parse_mode='HTML')
-
-# ========== هندلرهای دکمه‌ها ==========
-@bot.callback_query_handler(func=lambda call: call.data == "get_whitedns")
-def handle_get_whitedns(call):
-    user_id = call.from_user.id
-    
-    # ثبت کاربر
-    create_user(user_id, call.from_user.username, call.from_user.first_name)
-    
     text = f"""
-🌐 **کانفیگ‌های WhiteDNS شما**
-━━━━━━━━━━━━━━━━━━━━━━
-👤 **کاربر:** {call.from_user.first_name}
+📚 **راهنمای ربات {ADMIN_NAME}**
 ━━━━━━━━━━━━━━━━━━━━━━
 
-📋 **کانفیگ شماره ۱:**
-<code>{WHITEDNS_CONFIGS[0]}</code>
+🔹 **این ربات چیکار می‌کنه؟**
+یه دستیار هوشمند که به تمام سوالات شما درباره خدمات VPN پاسخ می‌ده!
 
-━━━━━━━━━━━━━━━━━━━━━━
+💬 **چی می‌تونم بپرسم؟**
+• کانفیگ رایگان WhiteDNS
+• سرور اختصاصی
+• قیمت‌ها و تخفیف‌ها
+• پشتیبانی و راهنما
+• هر چیز دیگه‌ای که نیاز دارید!
 
-📋 **کانفیگ شماره ۲:**
-<code>{WHITEDNS_CONFIGS[1]}</code>
-
-━━━━━━━━━━━━━━━━━━━━━━
-
-📌 **نحوه استفاده:**
-1. کانفیگ را کپی کنید
-2. در اپلیکیشن خود وارد کنید
-3. از اتصال مطمئن شوید
-
-✅ این کانفیگ‌ها کاملاً رایگان هستند.
-"""
-    
-    keyboard = InlineKeyboardMarkup(row_width=1)
-    keyboard.add(
-        InlineKeyboardButton("🪄 دریافت سرور اختصاصی GROOTZ", url="https://t.me/Grootz_Support"),
-        InlineKeyboardButton("🔙 بازگشت", callback_data="back_main")
-    )
-    
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
-                         reply_markup=keyboard, parse_mode='HTML')
-    bot.answer_callback_query(call.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "my_status")
-def handle_my_status(call):
-    user_id = call.from_user.id
-    user = get_user(user_id)
-    
-    if not user:
-        create_user(user_id, call.from_user.username, call.from_user.first_name)
-        user = get_user(user_id)
-    
-    text = f"""
-📊 **وضعیت حساب کاربری**
-━━━━━━━━━━━━━━━━━━━━━━
-👤 **کاربر:** {call.from_user.first_name}
-🆔 **آیدی:** `{user_id}`
-📅 **تاریخ عضویت:** {format_time(user['join_date'])}
-━━━━━━━━━━━━━━━━━━━━━━
-
-✅ **وضعیت:** فعال
-📋 **کانفیگ‌های دریافتی:** ۲ عدد (WhiteDNS)
-🚀 **سرور اختصاصی:** در صورت نیاز از پشتیبانی دریافت کنید
-"""
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
-                         reply_markup=get_back_button(), parse_mode='HTML')
-    bot.answer_callback_query(call.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "help")
-def handle_help_callback(call):
-    text = """
-📚 **راهنمای ربات WhiteDNS**
-━━━━━━━━━━━━━━━━━━━━━━
-
-🔹 این ربات برای دریافت کانفیگ‌های رایگان WhiteDNS طراحی شده است.
-
-**مراحل استفاده:**
-1. روی دکمه "دریافت کانفیگ WhiteDNS" کلیک کنید
-2. دو کانفیگ دریافت می‌کنید
-3. کانفیگ را در اپلیکیشن خود وارد کنید
-
-**کانفیگ‌ها:**
-• کاملاً رایگان
-• بدون محدودیت ترافیک
+🎯 **ویژگی‌ها:**
+• پاسخ‌دهی هوشمند
 • سرعت بالا
+• ۲۴/۷ فعال
 
-**سرور اختصاصی:**
-برای دریافت سرور اختصاصی با سرعت بالاتر، از دکمه "دریافت سرور اختصاصی GROOTZ" استفاده کنید.
-
-📞 **پشتیبانی:** @Grootz_Support
+📞 **پشتیبانی:** {ADMIN_USERNAME}
 """
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
-                         reply_markup=get_back_button(), parse_mode='HTML')
-    bot.answer_callback_query(call.id)
-
-@bot.callback_query_handler(func=lambda call: call.data == "back_main")
-def handle_back_main(call):
-    text = f"""
-🚀 **ربات VPN WhiteDNS** 🚀
-━━━━━━━━━━━━━━━━━━━━━━
-👤 **کاربر:** {call.from_user.first_name}
-━━━━━━━━━━━━━━━━━━━━━━
-
-✨ **منوی اصلی:**
-• دریافت کانفیگ WhiteDNS
-• دریافت سرور اختصاصی
-• راهنما
-• وضعیت من
-"""
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id,
-                         reply_markup=main_menu(), parse_mode='HTML')
-    bot.answer_callback_query(call.id)
-
-# ========== پیام‌های متنی ==========
-@bot.message_handler(func=lambda message: True)
-def handle_text_messages(message):
-    """هندلر پیام‌های متنی"""
-    text = message.text.lower()
-    
-    if text in ["سلام", "سلامت", "هی", "hi", "hello"]:
-        bot.reply_to(message, f"سلام {message.from_user.first_name} 👋\nاز منوی زیر استفاده کنید:", reply_markup=main_menu())
-    elif text in ["خوبی", "چطوری"]:
-        bot.reply_to(message, "من خوبم ممنون! 😊\nچطور می‌توانم کمکت کنم؟")
-    elif "کانفیگ" in text or "وایت" in text or "whitedns" in text:
-        bot.reply_to(message, "🌐 برای دریافت کانفیگ‌های WhiteDNS، روی دکمه زیر کلیک کنید:", 
-                    reply_markup=InlineKeyboardMarkup().add(
-                        InlineKeyboardButton("🌐 دریافت کانفیگ WhiteDNS", callback_data="get_whitedns")
-                    ))
-    elif "سرور" in text or "اختصاصی" in text or "گروتز" in text or "grootz" in text:
-        bot.reply_to(message, "🪄 برای دریافت سرور اختصاصی GROOTZ، روی لینک زیر کلیک کنید:\n@Grootz_Support",
-                    reply_markup=InlineKeyboardMarkup().add(
-                        InlineKeyboardButton("🪄 دریافت سرور اختصاصی GROOTZ", url="https://t.me/Grootz_Support")
-                    ))
-    elif "راهنما" in text or "help" in text:
-        help_command(message)
-    else:
-        bot.reply_to(message, f"سلام {message.from_user.first_name} 👋\nاز منوی زیر استفاده کنید یا دستور /help را بزنید.", 
-                    reply_markup=main_menu())
+    bot.reply_to(message, text, parse_mode='HTML')
 
 # ========== اجرا ==========
 if __name__ == "__main__":
     print("=" * 70)
-    print("🚀 ربات VPN WhiteDNS 🚀")
+    print("🚀 ربات هوشمند Reza Grootz 🚀")
     print("=" * 70)
-    print("✅ کانفیگ‌های WhiteDNS آماده ارسال")
-    print("✅ دکمه سرور اختصاصی به پیوی شما متصل است")
+    print(f"👤 ادمین: {ADMIN_NAME}")
+    print(f"📱 {ADMIN_USERNAME}")
     print("=" * 70)
-    print("🔄 ربات در حال اجرا...")
-    print("👤 ادمین: @Grootz_Support")
+    print("✅ پاسخ‌دهی هوشمند فعال شد!")
+    print("✅ آماده پاسخگویی به همه پیام‌ها")
     print("=" * 70)
     
     while True:
