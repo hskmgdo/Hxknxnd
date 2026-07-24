@@ -13,7 +13,7 @@ import hashlib
 from datetime import datetime
 
 # ========== تنظیمات اصلی ==========
-BOT_TOKEN = "8423981755:AAFaEYzOefEaxDiuyvKKyyTJzlhDXWSqyRw"
+BOT_TOKEN = "8810741889:AAEe7Q1eCuBuSRWNfDxGhJrXDijrO0PX6t4"
 ADMIN_ID = 8680457924  # آیدی عددی شما
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
@@ -21,13 +21,13 @@ bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.FileHandler('vpn_bot.log')``` logging.StreamHandler()]
+    handlers=[logging.FileHandler('vpn_bot.log'), logging.StreamHandler()]
 )
 logger = logging.getLogger(__name__)
 
 # ========== کانفیگ‌های WhiteDNS ==========
 WHITEDNS_CONFIGS = [
-    """stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hcmFza2hhdGFyZS5nZ2ZmLm5ldCIsImVuY3J5cHRpb25fa2V5IjoiZWQwY2VmMTZiNzE1M2I4ZDgzNWEzMjc4NjE1OTdjNjQiLCJlbmNyeXB0aW9uX21ldGhvZCI6MX19fX0"""```
+    """stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hcmFza2hhdGFyZS5nZ2ZmLm5ldCIsImVuY3J5cHRpb25fa2V5IjoiZWQwY2VmMTZiNzE1M2I4ZDgzNWEzMjc4NjE1OTdjNjQiLCJlbmNyeXB0aW9uX21ldGhvZCI6MX19fX0""",
     
     """stormdns://eyJzY2hlbWEiOiJ3aGl0ZWRucy5wcm9maWxlIiwidmVyc2lvbiI6MSwicHJvZmlsZSI6eyJuYW1lIjoicmV6YSBncm9vdHoiLCJzZXJ2ZXIiOnsiZG9tYWluIjoidi5hbm9ueW1vdXMub2JzZXJ2ZXIiLCJlbmNyeXB0aW9uX2tleSI6ImIyNzUwMzkxOTliMWM4YzkiLCJlbmNyeXB0aW9uX21ldGhvZCI6M319fX0"""
 ]
